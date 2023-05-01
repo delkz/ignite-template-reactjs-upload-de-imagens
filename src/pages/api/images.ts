@@ -79,6 +79,7 @@ export default async function handler(
         });
       })
       .catch(err => {
+        console.log('CAIU AQUI');
         return res.status(400).json(err);
       });
   }

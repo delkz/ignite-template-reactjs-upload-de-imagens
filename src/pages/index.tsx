@@ -1,4 +1,4 @@
-import { Button, Box } from '@chakra-ui/react';
+import { Button, Box, Text } from '@chakra-ui/react';
 import { useMemo } from 'react';
 import { useInfiniteQuery } from 'react-query';
 
@@ -17,20 +17,11 @@ interface Image {
 }
 
 interface GetImagesResponse {
-  after: string;
+  after?: string;
   data: Image[];
 }
 
 export default function Home(): JSX.Element {
-  async function fetchImages({ pageParam = null }): Promise<GetImagesResponse> {
-    const { data } = await api('/api/images', {
-      params: {
-        after: pageParam,
-      },
-    });
-    return data;
-  }
-
   const {
     data,
     isLoading,
@@ -38,19 +29,34 @@ export default function Home(): JSX.Element {
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteQuery('images', fetchImages, {
-    getNextPageParam: lastPage => lastPage?.after || null,
-  });
+  } = useInfiniteQuery(
+    'images',
+    async ({ pageParam = null }): Promise<GetImagesResponse> => {
+      const response = await api.get('/api/images', {
+        params: {
+          after: pageParam,
+        },
+      });
+
+      return response.data;
+    },
+    {
+      getNextPageParam: lastPage => {
+        return lastPage?.after ?? null;
+      },
+    }
+  );
 
   const formattedData = useMemo(() => {
-    const formatted = data?.pages.flatMap(imageData => {
-      return imageData.data.flat();
-    });
-    return formatted;
+    return data?.pages?.map(page => page.data).flat();
   }, [data]);
 
   if (isLoading && !isError) {
     return <Loading />;
+  }
+
+  if (isLoading && isError) {
+    return <Error />;
   }
 
   if (!isLoading && isError) {
@@ -61,11 +67,11 @@ export default function Home(): JSX.Element {
     <>
       <Header />
 
-      <Box maxW={1120} px={[10, 15, 20]} mx="auto" my={[10, 15, 20]}>
+      <Box maxW={1120} px={20} mx="auto" my={20}>
         <CardList cards={formattedData} />
 
         {hasNextPage && (
-          <Button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+          <Button mt="12" onClick={() => fetchNextPage()}>
             {isFetchingNextPage ? 'Carregando...' : 'Carregar mais'}
           </Button>
         )}
